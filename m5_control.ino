@@ -7,8 +7,8 @@ const int BUTTON_SAMPLING_MS = 10;
 const int LONG_PRESS_NUM_SAMPLES = 75;
 
 long last_button_read_millis = 0;
-int button_pressed_samples = 0;
-boolean last_long_pressed = false;
+int button_pressed_samples = 0; // number of consecutive samples with button pressed
+boolean last_long_pressed = false; // flag set after long press to avoid triggering short press on button release
 
 int num_presets = 4;
 int num_banks = 3;
