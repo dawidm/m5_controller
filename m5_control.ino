@@ -24,8 +24,8 @@ long last_button_read_millis = 0;
 int button_pressed_samples = 0; // number of consecutive samples with button pressed
 boolean last_long_pressed = false; // flag set after long press to avoid triggering short press on button release
 
-byte num_presets = 4;
-byte num_banks = 3;
+byte num_banks = DEF_N_BANKS;
+byte num_presets = DEF_N_PRESETS;
 
 int current_preset = -1; // -1 is initial state
 int current_bank = 0;
@@ -57,9 +57,6 @@ void setup() {
     if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_SETTINGS_STORED_VAL) {
       num_banks = check_n_banks(EEPROM.read(EEPROM_N_BANKS_ADDR));
       num_presets = check_n_presets(EEPROM.read(EEPROM_N_PRESETS_ADDR));
-    } else {
-      num_banks = DEF_N_BANKS;
-      num_presets = DEF_N_PRESETS;
     }
     Serial.print("banks ");
     Serial.print(num_banks);
@@ -88,13 +85,12 @@ void loop() {
     }
 
     if (!button_state) {
-      if (setup_mode_waiting_release)
-        setup_mode_waiting_release = false;
-      if (button_pressed_samples > 0 & last_long_pressed == false) {
+      if (button_pressed_samples > 0 & !last_long_pressed & !setup_mode_waiting_release) {
         button_pressed_samples = 0;
         short_press();
       }
       last_long_pressed = false;
+      setup_mode_waiting_release = false;
       button_pressed_samples = 0;
     }
 
@@ -147,9 +143,6 @@ void long_press() {
 void short_press() {
 
   if (setup_mode) {
-
-    if (setup_mode_waiting_release)
-      return;
 
     if (setup_step == 0)
       setup_n_banks++;
