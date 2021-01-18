@@ -16,7 +16,7 @@ const int DEF_N_BANKS = 3;
 const int DEF_N_PRESETS = 3;
 
 const int EEPROM_SETTINGS_STORED = 0;
-const int EEPROM_IS_STORED_VAL = 0;
+const int EEPROM_SETTINGS_STORED_VAL = 0;
 const int EEPROM_N_BANKS_ADDR = 1;
 const int EEPROM_N_PRESETS_ADDR = 2;
 
@@ -54,7 +54,7 @@ void setup() {
     led_col1();
   } else {
     Serial.println("normal mode");
-    if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_IS_STORED_VAL) {
+    if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_SETTINGS_STORED_VAL) {
       num_banks = check_n_banks(EEPROM.read(EEPROM_N_BANKS_ADDR));
       num_presets = check_n_presets(EEPROM.read(EEPROM_N_PRESETS_ADDR));
     } else {
@@ -124,7 +124,7 @@ void long_press() {
       Serial.println(num_presets);
       EEPROM.write(EEPROM_N_BANKS_ADDR, num_banks);
       EEPROM.write(EEPROM_N_PRESETS_ADDR, num_presets);
-      EEPROM.write(EEPROM_SETTINGS_STORED, EEPROM_IS_STORED_VAL);
+      EEPROM.write(EEPROM_SETTINGS_STORED, EEPROM_SETTINGS_STORED_VAL);
       led_off();
     }
     
