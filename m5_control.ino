@@ -20,8 +20,8 @@ const byte LED_COLOR_YELLOW = 4; // red + green
 const byte LED_COLOR_CYAN = 5; // green + blue
 const byte LED_COLOR_MAGENTA = 6; // red + blue
 
-const byte MAX_BANKS = 4;
-const byte MAX_PRESETS = 6;
+const byte MAX_BANKS = 6;
+const byte MAX_PRESETS = 4;
 const byte MIN_BANKS = 2;
 const byte MIN_PRESETS = 2;
 const byte DEF_N_BANKS = 3;
