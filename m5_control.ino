@@ -4,7 +4,7 @@
 const byte BUTTON_PIN = 2;
 
 const byte BUTTON_SAMPLING_MS = 10;
-const byte LONG_PRESS_NUM_SAMPLES = 75;
+const byte LONG_PRESS_NUM_SAMPLES = 75; // long press time = BUTTON_SAMPLING_MS * LONG_PRESS_NUM_SAMPLES
 
 const byte LED_1_PIN_R = 3; // red
 const byte LED_1_PIN_G = 4; // green
