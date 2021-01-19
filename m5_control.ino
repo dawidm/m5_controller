@@ -43,12 +43,12 @@ void setup() {
 
   //Serial.begin(31250); // init for midi
 
-  pinMode(BUTTON_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(LED_PIN_1, OUTPUT);
   pinMode(LED_PIN_2, OUTPUT);
   led_off();
 
-  if (digitalRead(BUTTON_PIN) == HIGH) {
+  if (digitalRead(BUTTON_PIN) == LOW) {
     Serial.println("setup mode");
     setup_mode = true;
     led_col1();
@@ -73,7 +73,7 @@ void loop() {
 
   if (millis() - last_button_read_millis > BUTTON_SAMPLING_MS) {
 
-    boolean button_state = (digitalRead(BUTTON_PIN) == HIGH) ? true : false;
+    boolean button_state = (digitalRead(BUTTON_PIN) == LOW) ? true : false;
 
     if (button_state)
       button_pressed_samples++;
