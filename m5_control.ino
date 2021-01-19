@@ -1,13 +1,17 @@
 
 #include <EEPROM.h>
 
-const int BUTTON_PIN = 2;
-const int LED_1_PIN_R = 3; // red
-const int LED_1_PIN_G = 4; // green
-const int LED_1_PIN_B = 5; // blue
-const int LED_2_PIN_R = 6; // red
-const int LED_2_PIN_G = 7; // green
-const int LED_2_PIN_B = 8; // blue
+const byte BUTTON_PIN = 2;
+
+const byte BUTTON_SAMPLING_MS = 10;
+const byte LONG_PRESS_NUM_SAMPLES = 75;
+
+const byte LED_1_PIN_R = 3; // red
+const byte LED_1_PIN_G = 4; // green
+const byte LED_1_PIN_B = 5; // blue
+const byte LED_2_PIN_R = 6; // red
+const byte LED_2_PIN_G = 7; // green
+const byte LED_2_PIN_B = 8; // blue
 
 const byte LED_COLOR_RED = 1;
 const byte LED_COLOR_GREEN = 2;
@@ -16,20 +20,17 @@ const byte LED_COLOR_YELLOW = 4; // red + green
 const byte LED_COLOR_CYAN = 5; // green + blue
 const byte LED_COLOR_MAGENTA = 6; // red + blue
 
-const int BUTTON_SAMPLING_MS = 10;
-const int LONG_PRESS_NUM_SAMPLES = 75;
+const byte MAX_BANKS = 4;
+const byte MAX_PRESETS = 6;
+const byte MIN_BANKS = 2;
+const byte MIN_PRESETS = 2;
+const byte DEF_N_BANKS = 3;
+const byte DEF_N_PRESETS = 3;
 
-const int MAX_BANKS = 4;
-const int MAX_PRESETS = 6;
-const int MIN_BANKS = 2;
-const int MIN_PRESETS = 2;
-const int DEF_N_BANKS = 3;
-const int DEF_N_PRESETS = 3;
-
-const int EEPROM_SETTINGS_STORED = 0;
-const int EEPROM_SETTINGS_STORED_VAL = 0;
-const int EEPROM_N_BANKS_ADDR = 1;
-const int EEPROM_N_PRESETS_ADDR = 2;
+const byte EEPROM_SETTINGS_STORED = 0;
+const byte EEPROM_SETTINGS_STORED_VAL = 0;
+const byte EEPROM_N_BANKS_ADDR = 1;
+const byte EEPROM_N_PRESETS_ADDR = 2;
 
 long last_button_read_millis = 0;
 int button_pressed_samples = 0; // number of consecutive samples with button pressed
@@ -43,7 +44,7 @@ int current_bank = 0;
 
 boolean setup_mode = false;
 boolean setup_mode_waiting_release = true; // set false after releasing button when started in setup mode
-int setup_step = 0; // 0 - setting number of banks, 1 - setting number of presets
+byte setup_step = 0; // 0 - setting number of banks, 1 - setting number of presets
 byte setup_n_banks = 0;
 byte setup_n_presets = 0;
 
@@ -236,7 +237,7 @@ void load_preset() {
   Serial.print(current_bank);
   Serial.print(" preset ");
   Serial.println(current_preset);
-  int m5_preset = current_bank * num_presets + current_preset;
+  byte m5_preset = current_bank * num_presets + current_preset;
   Serial.write(192); // midi program change
   Serial.write(m5_preset); // program number
 }
