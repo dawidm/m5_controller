@@ -2,8 +2,19 @@
 #include <EEPROM.h>
 
 const int BUTTON_PIN = 2;
-const int LED_PIN_1 = 3;
-const int LED_PIN_2 = 4;
+const int LED_1_PIN_R = 3; // red
+const int LED_1_PIN_G = 4; // green
+const int LED_1_PIN_B = 5; // blue
+const int LED_2_PIN_R = 6; // red
+const int LED_2_PIN_G = 7; // green
+const int LED_2_PIN_B = 8; // blue
+
+const byte LED_COLOR_RED = 1;
+const byte LED_COLOR_GREEN = 2;
+const byte LED_COLOR_BLUE = 3;
+const byte LED_COLOR_YELLOW = 4; // red + green
+const byte LED_COLOR_CYAN = 5; // green + blue
+const byte LED_COLOR_MAGENTA = 6; // red + blue
 
 const int BUTTON_SAMPLING_MS = 10;
 const int LONG_PRESS_NUM_SAMPLES = 75;
@@ -44,14 +55,19 @@ void setup() {
   //Serial.begin(31250); // init for midi
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(LED_PIN_1, OUTPUT);
-  pinMode(LED_PIN_2, OUTPUT);
-  led_off();
+  pinMode(LED_1_PIN_R, OUTPUT);
+  pinMode(LED_1_PIN_G, OUTPUT);
+  pinMode(LED_1_PIN_B, OUTPUT);
+  pinMode(LED_2_PIN_R, OUTPUT);
+  pinMode(LED_2_PIN_G, OUTPUT);
+  pinMode(LED_2_PIN_B, OUTPUT);
+  led1_off();
+  led2_off();
 
   if (digitalRead(BUTTON_PIN) == LOW) {
     Serial.println("setup mode");
     setup_mode = true;
-    led_col1();
+    led1_color(LED_COLOR_RED);
   } else {
     Serial.println("normal mode");
     if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_SETTINGS_STORED_VAL) {
@@ -102,12 +118,13 @@ void loop() {
 void long_press() {
 
   if (setup_mode) {
-    
+
     if (setup_mode_waiting_release)
       return;
     setup_step++;
     if (setup_step == 1) {
-      led_col2();
+      led1_off();
+      led2_color(LED_COLOR_RED);
       Serial.println("setup step 2");
     }
     if (setup_step == 2) {
@@ -121,9 +138,9 @@ void long_press() {
       EEPROM.write(EEPROM_N_BANKS_ADDR, num_banks);
       EEPROM.write(EEPROM_N_PRESETS_ADDR, num_presets);
       EEPROM.write(EEPROM_SETTINGS_STORED, EEPROM_SETTINGS_STORED_VAL);
-      led_off();
+      led2_off();
     }
-    
+
   } else {
 
     if (current_preset == -1) {
@@ -158,29 +175,63 @@ void short_press() {
       if (current_preset == num_presets)
         current_preset = 0;
     }
-    load_preset();
-  }
 
+    load_preset();
+
+  }
 }
 
 void load_bank() {
   switch (current_bank) {
     case 0:
-      led_col1();
+      led1_color(LED_COLOR_RED);
       break;
     case 1:
-      led_col2();
+      led1_color(LED_COLOR_GREEN);
       break;
     case 2:
-      led_col3();
+      led1_color(LED_COLOR_BLUE);
+      break;
+    case 3:
+      led1_color(LED_COLOR_CYAN);
+      break;
+    case 4:
+      led1_color(LED_COLOR_MAGENTA);
+      break;
+    case 5:
+      led1_color(LED_COLOR_YELLOW);
       break;
     default:
-      led_off();
+      led1_off();
   }
 
 }
 
 void load_preset() {
+
+  switch (current_preset) {
+    case 0:
+      led2_color(LED_COLOR_RED);
+      break;
+    case 1:
+      led2_color(LED_COLOR_GREEN);
+      break;
+    case 2:
+      led2_color(LED_COLOR_BLUE);
+      break;
+    case 3:
+      led2_color(LED_COLOR_CYAN);
+      break;
+    case 4:
+      led2_color(LED_COLOR_MAGENTA);
+      break;
+    case 5:
+      led2_color(LED_COLOR_YELLOW);
+      break;
+    default:
+      led2_off();
+  }
+
   Serial.print("loading bank ");
   Serial.print(current_bank);
   Serial.print(" preset ");
@@ -190,25 +241,55 @@ void load_preset() {
   Serial.write(m5_preset); // program number
 }
 
-void led_off() {
-  digitalWrite(LED_PIN_1, LOW);
-  digitalWrite(LED_PIN_2, LOW);
+void led1_off() {
+  digitalWrite(LED_1_PIN_R, LOW);
+  digitalWrite(LED_1_PIN_G, LOW);
+  digitalWrite(LED_1_PIN_B, LOW);
 }
 
-void led_col1() {
-  led_off();
-  digitalWrite(LED_PIN_1, HIGH);
+void led2_off() {
+  digitalWrite(LED_2_PIN_R, LOW);
+  digitalWrite(LED_2_PIN_G, LOW);
+  digitalWrite(LED_2_PIN_B, LOW);
 }
 
-void led_col2() {
-  led_off();
-  digitalWrite(LED_PIN_2, HIGH);
+void led1_color(byte color) {
+  led_color(LED_1_PIN_R, LED_1_PIN_G, LED_1_PIN_B, color);
 }
 
-void led_col3() {
-  led_off();
-  digitalWrite(LED_PIN_1, HIGH);
-  digitalWrite(LED_PIN_2, HIGH);
+void led2_color(byte color) {
+  led_color(LED_2_PIN_R, LED_2_PIN_G, LED_2_PIN_B, color);
+}
+
+void led_color(byte red_pin, byte green_pin, byte blue_pin, byte color) {
+
+  digitalWrite(red_pin, LOW);
+  digitalWrite(green_pin, LOW);
+  digitalWrite(blue_pin, LOW);
+
+  switch (color) {
+    case LED_COLOR_RED:
+      digitalWrite(red_pin, HIGH);
+      break;
+    case LED_COLOR_GREEN:
+      digitalWrite(green_pin, HIGH);
+      break;
+    case LED_COLOR_BLUE:
+      digitalWrite(blue_pin, HIGH);
+      break;
+    case LED_COLOR_YELLOW: // red + green
+      digitalWrite(red_pin, HIGH);
+      digitalWrite(green_pin, HIGH);
+      break;
+    case LED_COLOR_CYAN: // green + blue
+      digitalWrite(green_pin, HIGH);
+      digitalWrite(blue_pin, HIGH);
+      break;
+    case LED_COLOR_MAGENTA: // red + blue
+      digitalWrite(red_pin, HIGH);
+      digitalWrite(blue_pin, HIGH);
+      break;
+  }
 }
 
 byte check_n_banks(byte n_banks) {
