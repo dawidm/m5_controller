@@ -1,17 +1,18 @@
 
 #include <EEPROM.h>
 
-const byte BUTTON_PIN = 2;
+const byte BUTTON_1_PIN = 2;
+const byte BUTTON_2_PIN = 3;
 
 const byte BUTTON_SAMPLING_MS = 10;
-const byte LONG_PRESS_NUM_SAMPLES = 75; // long press time = BUTTON_SAMPLING_MS * LONG_PRESS_NUM_SAMPLES
+const byte LONG_PRESS_NUM_SAMPLES = 50; // long press time = BUTTON_SAMPLING_MS * LONG_PRESS_NUM_SAMPLES
 
-const byte LED_1_PIN_R = 3; // red
-const byte LED_1_PIN_G = 4; // green
-const byte LED_1_PIN_B = 5; // blue
-const byte LED_2_PIN_R = 6; // red
-const byte LED_2_PIN_G = 7; // green
-const byte LED_2_PIN_B = 8; // blue
+const byte LED_1_PIN_R = 4; // red
+const byte LED_1_PIN_G = 5; // green
+const byte LED_1_PIN_B = 6; // blue
+const byte LED_2_PIN_R = 7; // red
+const byte LED_2_PIN_G = 8; // green
+const byte LED_2_PIN_B = 9; // blue
 
 const byte LED_COLOR_RED = 1;
 const byte LED_COLOR_GREEN = 2;
@@ -32,9 +33,13 @@ const byte EEPROM_SETTINGS_STORED_VAL = 0;
 const byte EEPROM_N_BANKS_ADDR = 1;
 const byte EEPROM_N_PRESETS_ADDR = 2;
 
-long last_button_read_millis = 0;
-int button_pressed_samples = 0; // number of consecutive samples with button pressed
-boolean last_long_pressed = false; // flag set after long press to avoid triggering short press on button release
+long last_button1_read_millis = 0;
+int button1_pressed_samples = 0; // number of consecutive samples with button pressed
+boolean last_button1_long_pressed = false; // flag set after long press to avoid triggering short press on button release
+
+long last_button2_read_millis = 0;
+int button2_pressed_samples = 0;
+boolean last_button2_long_pressed = false;
 
 byte num_banks = DEF_N_BANKS;
 byte num_presets = DEF_N_PRESETS;
@@ -55,7 +60,8 @@ void setup() {
 
   //Serial.begin(31250); // init for midi
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
   pinMode(LED_1_PIN_R, OUTPUT);
   pinMode(LED_1_PIN_G, OUTPUT);
   pinMode(LED_1_PIN_B, OUTPUT);
@@ -65,7 +71,7 @@ void setup() {
   led1_off();
   led2_off();
 
-  if (digitalRead(BUTTON_PIN) == LOW) {
+  if (digitalRead(BUTTON_1_PIN) == LOW) {
     Serial.println("setup mode");
     setup_mode = true;
     led1_color(LED_COLOR_RED);
@@ -85,38 +91,92 @@ void setup() {
 
 void loop() {
 
-  if (millis() - last_button_read_millis < 0) // overflow
-    last_button_read_millis = 0;
+  if (millis() - last_button1_read_millis < 0) // overflow
+    last_button1_read_millis = 0;
 
-  if (millis() - last_button_read_millis > BUTTON_SAMPLING_MS) {
+  if (millis() - last_button1_read_millis > BUTTON_SAMPLING_MS) {
 
-    boolean button_state = (digitalRead(BUTTON_PIN) == LOW) ? true : false;
+    boolean button_state = (digitalRead(BUTTON_1_PIN) == LOW) ? true : false;
 
     if (button_state)
-      button_pressed_samples++;
+      button1_pressed_samples++;
 
-    if (button_pressed_samples >= LONG_PRESS_NUM_SAMPLES) {
-      button_pressed_samples = 0;
-      last_long_pressed = true;
-      long_press();
+    if (button1_pressed_samples >= LONG_PRESS_NUM_SAMPLES) {
+      button1_pressed_samples = 0;
+      last_button1_long_pressed = true;
+      long_b1_press();
     }
 
     if (!button_state) {
-      if (button_pressed_samples > 0 & !last_long_pressed & !setup_mode_waiting_release) {
-        button_pressed_samples = 0;
-        short_press();
+      if (button1_pressed_samples > 0 & !last_button1_long_pressed & !setup_mode_waiting_release) {
+        button1_pressed_samples = 0;
+        short_b1_press();
       }
-      last_long_pressed = false;
+      last_button1_long_pressed = false;
       setup_mode_waiting_release = false;
-      button_pressed_samples = 0;
+      button1_pressed_samples = 0;
     }
 
-    last_button_read_millis = millis();
+    last_button1_read_millis = millis();
+  }
+
+  if (millis() - last_button2_read_millis < 0) // overflow
+    last_button2_read_millis = 0;
+
+  if (millis() - last_button2_read_millis > BUTTON_SAMPLING_MS) {
+
+    boolean button_state = (digitalRead(BUTTON_2_PIN) == LOW) ? true : false;
+
+    if (button_state)
+      button2_pressed_samples++;
+
+    if (button2_pressed_samples >= LONG_PRESS_NUM_SAMPLES) {
+      button2_pressed_samples = 0;
+      last_button2_long_pressed = true;
+      long_b2_press();
+    }
+
+    if (!button_state) {
+      if (button2_pressed_samples > 0 & !last_button2_long_pressed) {
+        button2_pressed_samples = 0;
+        short_b2_press();
+      }
+      last_button2_long_pressed = false;
+      button2_pressed_samples = 0;
+    }
+
+    last_button2_read_millis = millis();
   }
 
 }
 
-void long_press() {
+void short_b1_press() {
+
+  if (setup_mode) {
+
+    if (setup_step == 0)
+      setup_n_banks++;
+    if (setup_step == 1)
+      setup_n_presets++;
+
+  } else {
+
+    // change bank
+    if (current_preset == -1) {
+      current_preset = 0;
+    } else {
+      current_bank++;
+      if (current_bank == num_banks)
+        current_bank = 0;
+      current_preset = 0;
+    }
+    load_bank();
+    load_preset();
+
+  }
+}
+
+void long_b1_press() {
 
   if (setup_mode) {
 
@@ -143,32 +203,23 @@ void long_press() {
     }
 
   } else {
-
-    if (current_preset == -1) {
+  
+    if (current_bank != 0 || current_preset != 0) {
+      current_bank = 0;
       current_preset = 0;
-    } else {
-      current_bank++;
-      if (current_bank == num_banks)
-        current_bank = 0;
-      current_preset = 0;
+      load_bank();
+      load_preset();
     }
-    load_bank();
-    load_preset();
-
+    
   }
 }
 
-void short_press() {
+void short_b2_press() {
 
   if (setup_mode) {
 
-    if (setup_step == 0)
-      setup_n_banks++;
-    if (setup_step == 1)
-      setup_n_presets++;
-
   } else {
-
+    // change preset
     if (current_preset == -1) {
       current_preset = 0;
     } else {
@@ -178,7 +229,18 @@ void short_press() {
     }
 
     load_preset();
+  }
 
+}
+
+void long_b2_press() {
+  if (!setup_mode) {
+    if (current_bank != 0 || current_preset != 1) {
+      current_bank = 0;
+      current_preset = 1;
+      load_bank();
+      load_preset();
+    }
   }
 }
 
@@ -194,10 +256,10 @@ void load_bank() {
       led1_color(LED_COLOR_BLUE);
       break;
     case 3:
-      led1_color(LED_COLOR_CYAN);
+      led1_color(LED_COLOR_MAGENTA);
       break;
     case 4:
-      led1_color(LED_COLOR_MAGENTA);
+      led1_color(LED_COLOR_CYAN);
       break;
     case 5:
       led1_color(LED_COLOR_YELLOW);
@@ -224,10 +286,10 @@ void load_preset() {
       led2_color(LED_COLOR_CYAN);
       break;
     case 4:
-      led2_color(LED_COLOR_MAGENTA);
+      led2_color(LED_COLOR_YELLOW);
       break;
     case 5:
-      led2_color(LED_COLOR_YELLOW);
+      led2_color(LED_COLOR_MAGENTA);
       break;
     default:
       led2_off();
