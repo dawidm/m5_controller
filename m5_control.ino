@@ -32,6 +32,8 @@ const byte EEPROM_SETTINGS_STORED = 0;
 const byte EEPROM_SETTINGS_STORED_VAL = 0;
 const byte EEPROM_N_BANKS_ADDR = 1;
 const byte EEPROM_N_PRESETS_ADDR = 2;
+const byte EEPROM_BANK_ADDR = 3;
+const byte EEPROM_PRESET_ADDR = 3;
 
 long last_button1_read_millis = 0;
 int button1_pressed_samples = 0; // number of consecutive samples with button pressed
@@ -81,6 +83,16 @@ void setup() {
       num_banks = check_n_banks(EEPROM.read(EEPROM_N_BANKS_ADDR));
       num_presets = check_n_presets(EEPROM.read(EEPROM_N_PRESETS_ADDR));
     }
+    
+    current_bank = EEPROM.read(EEPROM_BANK_ADDR);
+    current_preset = EEPROM.read(EEPROM_PRESET_ADDR);
+    if (current_bank >= num_banks)
+      current_bank = 0;
+    if (current_preset >= num_presets)
+      current_preset = 0;
+
+    update_preset_diodes();
+    
     Serial.print("banks ");
     Serial.print(num_banks);
     Serial.print(" presets ");
@@ -170,7 +182,6 @@ void short_b1_press() {
         current_bank = 0;
       current_preset = 0;
     }
-    load_bank();
     load_preset();
 
   }
@@ -207,7 +218,6 @@ void long_b1_press() {
     if (current_bank != 0 || current_preset != 0) {
       current_bank = 0;
       current_preset = 0;
-      load_bank();
       load_preset();
     }
     
@@ -227,7 +237,6 @@ void short_b2_press() {
       if (current_preset == num_presets)
         current_preset = 0;
     }
-
     load_preset();
   }
 
@@ -238,13 +247,29 @@ void long_b2_press() {
     if (current_bank != 0 || current_preset != 1) {
       current_bank = 0;
       current_preset = 1;
-      load_bank();
       load_preset();
     }
   }
 }
 
-void load_bank() {
+void load_preset() {
+
+  Serial.print("loading bank ");
+  Serial.print(current_bank);
+  Serial.print(" preset ");
+  Serial.println(current_preset);
+
+  update_preset_diodes();
+  
+  byte m5_preset = current_bank * num_presets + current_preset;
+  Serial.write(192); // midi program change
+  Serial.write(m5_preset); // program number
+
+  store_bank_preset();
+}
+
+void update_preset_diodes() {
+  
   switch (current_bank) {
     case 0:
       led1_color(LED_COLOR_RED);
@@ -268,10 +293,6 @@ void load_bank() {
       led1_off();
   }
 
-}
-
-void load_preset() {
-
   switch (current_preset) {
     case 0:
       led2_color(LED_COLOR_RED);
@@ -294,14 +315,12 @@ void load_preset() {
     default:
       led2_off();
   }
+  
+}
 
-  Serial.print("loading bank ");
-  Serial.print(current_bank);
-  Serial.print(" preset ");
-  Serial.println(current_preset);
-  byte m5_preset = current_bank * num_presets + current_preset;
-  Serial.write(192); // midi program change
-  Serial.write(m5_preset); // program number
+void store_bank_preset() {
+  EEPROM.write(EEPROM_BANK_ADDR, current_bank);
+  EEPROM.write(EEPROM_PRESET_ADDR, current_preset);
 }
 
 void led1_off() {
