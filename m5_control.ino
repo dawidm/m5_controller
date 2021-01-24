@@ -1,6 +1,8 @@
 
 #include <EEPROM.h>
 
+#define DEBUG
+
 const byte BUTTON_1_PIN = 2;
 const byte BUTTON_2_PIN = 3;
 
@@ -33,7 +35,7 @@ const byte EEPROM_SETTINGS_STORED_VAL = 0;
 const byte EEPROM_N_BANKS_ADDR = 1;
 const byte EEPROM_N_PRESETS_ADDR = 2;
 const byte EEPROM_BANK_ADDR = 3;
-const byte EEPROM_PRESET_ADDR = 3;
+const byte EEPROM_PRESET_ADDR = 4;
 
 long last_button1_read_millis = 0;
 int button1_pressed_samples = 0; // number of consecutive samples with button pressed
@@ -46,7 +48,7 @@ boolean last_button2_long_pressed = false;
 byte num_banks = DEF_N_BANKS;
 byte num_presets = DEF_N_PRESETS;
 
-int current_preset = -1; // -1 is initial state
+int current_preset = 0;
 int current_bank = 0;
 
 boolean setup_mode = false;
@@ -57,12 +59,17 @@ byte setup_n_presets = 0;
 
 boolean no_bank_mode = false;
 
+boolean two_preset_mode = false;
+boolean after_bank_switch = false; // the state after bank switch, waiting for choosing preset 1/2, two leds are on
+
 void setup() {
 
+  #ifdef DEBUG
   Serial.begin(9600);
   Serial.println("init");
-
-  //Serial.begin(31250); // init for midi
+  #else
+  Serial.begin(31250); // init for midi
+  #endif
 
   pinMode(BUTTON_1_PIN, INPUT_PULLUP);
   pinMode(BUTTON_2_PIN, INPUT_PULLUP);
@@ -76,26 +83,36 @@ void setup() {
   led2_off();
 
   if (digitalRead(BUTTON_1_PIN) == LOW) {
-    
-    Serial.println("setup mode");
+    #ifdef DEBUG
+    Serial.println("setup mode step 1");
+    #endif
     setup_mode = true;
     led1_color(LED_COLOR_RED);
-    
+
   } else {
-    
+
+    #ifdef DEBUG
     Serial.println("normal mode");
-    
+    #endif
+
     if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_SETTINGS_STORED_VAL) {
       byte nbanks = EEPROM.read(EEPROM_N_BANKS_ADDR);
       if (nbanks == 0) {
         no_bank_mode = true;
+        num_banks = 0;
         num_presets = 4;
       } else {
-        num_banks = check_n_banks(nbanks);
-        num_presets = check_n_presets(EEPROM.read(EEPROM_N_PRESETS_ADDR));
+        byte npresets = EEPROM.read(EEPROM_N_PRESETS_ADDR);
+        if (npresets == 0) {
+          two_preset_mode = true;
+          num_presets = 2;
+        } else {
+          num_banks = check_n_banks(nbanks);
+          num_presets = check_n_presets(npresets);
+        }
       }
     }
-    
+
     current_bank = EEPROM.read(EEPROM_BANK_ADDR);
     current_preset = EEPROM.read(EEPROM_PRESET_ADDR);
     if (current_bank >= num_banks)
@@ -103,12 +120,15 @@ void setup() {
     if (current_preset >= num_presets)
       current_preset = 0;
 
-    update_preset_diodes();
-    
+    #ifdef DEBUG
     Serial.print("banks ");
     Serial.print(num_banks);
     Serial.print(" presets ");
     Serial.println(num_presets);
+    #endif
+
+    load_preset();
+
   }
 
 }
@@ -184,10 +204,22 @@ void short_b1_press() {
       setup_n_presets++;
 
   } else if (no_bank_mode) {
-    
+
     current_preset = 0;
     load_preset();
-    
+
+  } else if (two_preset_mode) {
+
+    after_bank_switch = false;
+    if (current_preset == 0) {
+      // off
+      current_preset = -1;
+      load_preset();
+    } else {
+      current_preset = 0;
+      load_preset();
+    }
+
   } else {
 
     // change bank
@@ -212,7 +244,7 @@ void long_b1_press() {
       return;
     setup_step++;
     if (setup_step == 1) {
-      if (setup_n_banks == 0) {
+      if (setup_n_banks == 0) { // no banks mode
         setup_mode = false;
         no_bank_mode = true;
         EEPROM.write(EEPROM_N_BANKS_ADDR, 0);
@@ -221,36 +253,64 @@ void long_b1_press() {
       } else {
         led1_off();
         led2_color(LED_COLOR_RED);
-        Serial.println("setup step 2");
+        #ifdef DEBUG
+        Serial.println("setup mode step 2");
+        #endif
       }
     }
     if (setup_step == 2) {
       setup_mode = false;
       num_banks = check_n_banks(setup_n_banks);
-      num_presets = check_n_presets(setup_n_presets);
-      Serial.print("banks ");
-      Serial.print(num_banks);
-      Serial.print(" presets ");
-      Serial.println(num_presets);
       EEPROM.write(EEPROM_N_BANKS_ADDR, num_banks);
-      EEPROM.write(EEPROM_N_PRESETS_ADDR, num_presets);
+
+      if (setup_n_presets == 0) { // two preset mode
+        #ifdef DEBUG
+        Serial.print("banks ");
+        Serial.print(num_banks);
+        Serial.println(" two presets mode ");
+        #endif
+        two_preset_mode = true;
+        EEPROM.write(EEPROM_N_PRESETS_ADDR, 0);
+      } else { // mulit bank-preset mode
+        num_presets = check_n_presets(setup_n_presets);
+        #ifdef DEBUG
+        Serial.print("banks ");
+        Serial.print(num_banks);
+        Serial.print(" presets ");
+        Serial.println(num_presets);
+        #endif
+        EEPROM.write(EEPROM_N_PRESETS_ADDR, num_presets);
+        led2_off();
+      }
       EEPROM.write(EEPROM_SETTINGS_STORED, EEPROM_SETTINGS_STORED_VAL);
-      led2_off();
+      store_bank_preset(true);
+      current_bank = 0;
+      current_preset = 0;
+      load_preset();
     }
 
   } else if (no_bank_mode) {
-    
+
     current_preset = 2;
     load_preset();
-    
+
+  } else if (two_preset_mode) {
+
+    current_bank--;
+    if (current_bank < 0)
+      current_bank = num_banks - 1;
+    current_preset = -1;
+    after_bank_switch = true;
+    load_preset();
+
   } else {
-  
+
     if (current_bank != 0 || current_preset != 0) {
       current_bank = 0;
       current_preset = 0;
       load_preset();
     }
-    
+
   }
 }
 
@@ -259,12 +319,24 @@ void short_b2_press() {
   if (setup_mode) {
 
   } else if (no_bank_mode) {
-    
+
     current_preset = 1;
     load_preset();
-    
+
+  } else if (two_preset_mode) {
+
+    after_bank_switch = false;
+    if (current_preset == 1) {
+      // off
+      current_preset = -1;
+      load_preset();
+    } else {
+      current_preset = 1;
+      load_preset();
+    }
+
   } else {
-    
+
     // change preset
     if (current_preset == -1) {
       current_preset = 0;
@@ -274,124 +346,249 @@ void short_b2_press() {
         current_preset = 0;
     }
     load_preset();
-    
+
   }
 
 }
 
 void long_b2_press() {
   if (setup_mode) {
-    
+
   } else if (no_bank_mode) {
-    
+
     current_preset = 3;
     load_preset();
-    
+
+  } else if (two_preset_mode) {
+
+    current_bank++;
+    if (current_bank >= num_banks)
+      current_bank = 0;
+    current_preset = -1;
+    after_bank_switch = true;
+    load_preset();
+
   } else {
-    
+
     if (current_bank != 0 || current_preset != 1) {
       current_bank = 0;
       current_preset = 1;
       load_preset();
     }
-    
+
   }
 }
 
 void load_preset() {
 
+  #ifdef DEBUG
   Serial.print("loading bank ");
   Serial.print(current_bank);
   Serial.print(" preset ");
   Serial.println(current_preset);
+  #endif
 
   update_preset_diodes();
-  
-  byte m5_preset = current_bank * num_presets + current_preset;
-  Serial.write(192); // midi program change
-  Serial.write(m5_preset); // program number
 
-  store_bank_preset();
+  if (current_preset == -1) {
+    m5_bypass(true);
+  } else {
+    if (two_preset_mode)
+      m5_bypass(false);
+    byte m5_preset = current_bank * num_presets + current_preset;
+    m5_preset_change();
+    store_bank_preset(false);
+  }
 }
 
 void update_preset_diodes() {
 
   if (no_bank_mode) {
-    
+
     switch (current_preset) {
       case 0:
         led1_color(LED_COLOR_RED);
         led2_off();
-      break;
+        break;
       case 1:
         led2_color(LED_COLOR_RED);
         led1_off();
-      break;
+        break;
       case 2:
         led1_color(LED_COLOR_GREEN);
         led2_off();
-      break;
+        break;
       case 3:
         led2_color(LED_COLOR_GREEN);
         led1_off();
-      break;
+        break;
     }
-    
-  } else {
-  
-    switch (current_bank) {
-      case 0:
-        led1_color(LED_COLOR_RED);
-        break;
-      case 1:
-        led1_color(LED_COLOR_GREEN);
-        break;
-      case 2:
-        led1_color(LED_COLOR_BLUE);
-        break;
-      case 3:
-        led1_color(LED_COLOR_MAGENTA);
-        break;
-      case 4:
-        led1_color(LED_COLOR_CYAN);
-        break;
-      case 5:
-        led1_color(LED_COLOR_YELLOW);
-        break;
-      default:
+
+  } else if (two_preset_mode) {
+
+    if (current_preset == -1) {
+
+      if (after_bank_switch) {
+
+        led1_bank_color();
+        led2_bank_color();
+        
+      } else {
+        
         led1_off();
-    }
-  
-    switch (current_preset) {
-      case 0:
-        led2_color(LED_COLOR_RED);
-        break;
-      case 1:
-        led2_color(LED_COLOR_GREEN);
-        break;
-      case 2:
-        led2_color(LED_COLOR_BLUE);
-        break;
-      case 3:
-        led2_color(LED_COLOR_MAGENTA);
-        break;
-      case 4:
-        led2_color(LED_COLOR_CYAN);
-        break;
-      case 5:
-        led2_color(LED_COLOR_YELLOW);
-        break;
-      default:
         led2_off();
         
+      }
+
+    } else if (current_preset == 0) {
+
+      led2_off();
+      led1_bank_color();
+
+    } else {
+
+      led1_off();
+      led2_bank_color();
+
     }
+
+  } else {
+
+    led1_bank_color();
+    led2_preset_color();
   }
-  
+
 }
 
-void store_bank_preset() {
-  EEPROM.write(EEPROM_BANK_ADDR, current_bank);
-  EEPROM.write(EEPROM_PRESET_ADDR, current_preset);
+void led1_bank_color() {
+  switch (current_bank) {
+    case 0:
+      led1_color(LED_COLOR_RED);
+      break;
+    case 1:
+      led1_color(LED_COLOR_GREEN);
+      break;
+    case 2:
+      led1_color(LED_COLOR_BLUE);
+      break;
+    case 3:
+      led1_color(LED_COLOR_MAGENTA);
+      break;
+    case 4:
+      led1_color(LED_COLOR_CYAN);
+      break;
+    case 5:
+      led1_color(LED_COLOR_YELLOW);
+      break;
+    default:
+      led1_off();
+  }
+}
+
+void led2_bank_color() {
+  switch (current_bank) {
+    case 0:
+      led2_color(LED_COLOR_RED);
+      break;
+    case 1:
+      led2_color(LED_COLOR_GREEN);
+      break;
+    case 2:
+      led2_color(LED_COLOR_BLUE);
+      break;
+    case 3:
+      led2_color(LED_COLOR_MAGENTA);
+      break;
+    case 4:
+      led2_color(LED_COLOR_CYAN);
+      break;
+    case 5:
+      led2_color(LED_COLOR_YELLOW);
+      break;
+    default:
+      led1_off();
+  }
+}
+
+void led1_preset_color() {
+  switch (current_preset) {
+    case 0:
+      led1_color(LED_COLOR_RED);
+      break;
+    case 1:
+      led1_color(LED_COLOR_GREEN);
+      break;
+    case 2:
+      led1_color(LED_COLOR_BLUE);
+      break;
+    case 3:
+      led1_color(LED_COLOR_MAGENTA);
+      break;
+    case 4:
+      led1_color(LED_COLOR_CYAN);
+      break;
+    case 5:
+      led1_color(LED_COLOR_YELLOW);
+      break;
+    default:
+      led1_off();
+  }
+}
+
+void led2_preset_color() {
+  switch (current_preset) {
+    case 0:
+      led2_color(LED_COLOR_RED);
+      break;
+    case 1:
+      led2_color(LED_COLOR_GREEN);
+      break;
+    case 2:
+      led2_color(LED_COLOR_BLUE);
+      break;
+    case 3:
+      led2_color(LED_COLOR_MAGENTA);
+      break;
+    case 4:
+      led2_color(LED_COLOR_CYAN);
+      break;
+    case 5:
+      led2_color(LED_COLOR_YELLOW);
+      break;
+    default:
+      led2_off();
+  }
+}
+
+void store_bank_preset(boolean initial_values) {
+  if (initial_values) {
+    EEPROM.write(EEPROM_BANK_ADDR, 0);
+    EEPROM.write(EEPROM_PRESET_ADDR, 0);
+  } else {
+    EEPROM.write(EEPROM_BANK_ADDR, current_bank);
+    EEPROM.write(EEPROM_PRESET_ADDR, current_preset);
+  }
+}
+
+void m5_bypass(boolean bypass) {
+
+  #ifndef DEBUG
+  Serial.write(176); // control change
+  Serial.write(11); // command number
+  if (bypass)
+    Serial.write(0);
+  else
+    Serial.write(127);
+  #endif
+}
+
+void m5_preset_change() {
+  
+    #ifndef DEBUG
+    Serial.write(192); // midi program change
+    Serial.write(m5_preset); // program number
+    #endif
+    
 }
 
 void led1_off() {
