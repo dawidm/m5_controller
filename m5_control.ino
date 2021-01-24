@@ -373,13 +373,13 @@ void update_preset_diodes() {
         led2_color(LED_COLOR_BLUE);
         break;
       case 3:
-        led2_color(LED_COLOR_CYAN);
+        led2_color(LED_COLOR_MAGENTA);
         break;
       case 4:
-        led2_color(LED_COLOR_YELLOW);
+        led2_color(LED_COLOR_CYAN);
         break;
       case 5:
-        led2_color(LED_COLOR_MAGENTA);
+        led2_color(LED_COLOR_YELLOW);
         break;
       default:
         led2_off();
