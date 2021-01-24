@@ -55,6 +55,8 @@ byte setup_step = 0; // 0 - setting number of banks, 1 - setting number of prese
 byte setup_n_banks = 0;
 byte setup_n_presets = 0;
 
+boolean no_bank_mode = false;
+
 void setup() {
 
   Serial.begin(9600);
@@ -74,14 +76,24 @@ void setup() {
   led2_off();
 
   if (digitalRead(BUTTON_1_PIN) == LOW) {
+    
     Serial.println("setup mode");
     setup_mode = true;
     led1_color(LED_COLOR_RED);
+    
   } else {
+    
     Serial.println("normal mode");
+    
     if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_SETTINGS_STORED_VAL) {
-      num_banks = check_n_banks(EEPROM.read(EEPROM_N_BANKS_ADDR));
-      num_presets = check_n_presets(EEPROM.read(EEPROM_N_PRESETS_ADDR));
+      byte nbanks = EEPROM.read(EEPROM_N_BANKS_ADDR);
+      if (nbanks == 0) {
+        no_bank_mode = true;
+        num_presets = 4;
+      } else {
+        num_banks = check_n_banks(nbanks);
+        num_presets = check_n_presets(EEPROM.read(EEPROM_N_PRESETS_ADDR));
+      }
     }
     
     current_bank = EEPROM.read(EEPROM_BANK_ADDR);
@@ -171,6 +183,11 @@ void short_b1_press() {
     if (setup_step == 1)
       setup_n_presets++;
 
+  } else if (no_bank_mode) {
+    
+    current_preset = 0;
+    load_preset();
+    
   } else {
 
     // change bank
@@ -195,9 +212,17 @@ void long_b1_press() {
       return;
     setup_step++;
     if (setup_step == 1) {
-      led1_off();
-      led2_color(LED_COLOR_RED);
-      Serial.println("setup step 2");
+      if (setup_n_banks == 0) {
+        setup_mode = false;
+        no_bank_mode = true;
+        EEPROM.write(EEPROM_N_BANKS_ADDR, 0);
+        EEPROM.write(EEPROM_SETTINGS_STORED, EEPROM_SETTINGS_STORED_VAL);
+        led1_off();
+      } else {
+        led1_off();
+        led2_color(LED_COLOR_RED);
+        Serial.println("setup step 2");
+      }
     }
     if (setup_step == 2) {
       setup_mode = false;
@@ -213,6 +238,11 @@ void long_b1_press() {
       led2_off();
     }
 
+  } else if (no_bank_mode) {
+    
+    current_preset = 2;
+    load_preset();
+    
   } else {
   
     if (current_bank != 0 || current_preset != 0) {
@@ -228,7 +258,13 @@ void short_b2_press() {
 
   if (setup_mode) {
 
+  } else if (no_bank_mode) {
+    
+    current_preset = 1;
+    load_preset();
+    
   } else {
+    
     // change preset
     if (current_preset == -1) {
       current_preset = 0;
@@ -238,17 +274,27 @@ void short_b2_press() {
         current_preset = 0;
     }
     load_preset();
+    
   }
 
 }
 
 void long_b2_press() {
-  if (!setup_mode) {
+  if (setup_mode) {
+    
+  } else if (no_bank_mode) {
+    
+    current_preset = 3;
+    load_preset();
+    
+  } else {
+    
     if (current_bank != 0 || current_preset != 1) {
       current_bank = 0;
       current_preset = 1;
       load_preset();
     }
+    
   }
 }
 
@@ -269,51 +315,76 @@ void load_preset() {
 }
 
 void update_preset_diodes() {
-  
-  switch (current_bank) {
-    case 0:
-      led1_color(LED_COLOR_RED);
-      break;
-    case 1:
-      led1_color(LED_COLOR_GREEN);
-      break;
-    case 2:
-      led1_color(LED_COLOR_BLUE);
-      break;
-    case 3:
-      led1_color(LED_COLOR_MAGENTA);
-      break;
-    case 4:
-      led1_color(LED_COLOR_CYAN);
-      break;
-    case 5:
-      led1_color(LED_COLOR_YELLOW);
-      break;
-    default:
-      led1_off();
-  }
 
-  switch (current_preset) {
-    case 0:
-      led2_color(LED_COLOR_RED);
+  if (no_bank_mode) {
+    
+    switch (current_preset) {
+      case 0:
+        led1_color(LED_COLOR_RED);
+        led2_off();
       break;
-    case 1:
-      led2_color(LED_COLOR_GREEN);
+      case 1:
+        led2_color(LED_COLOR_RED);
+        led1_off();
       break;
-    case 2:
-      led2_color(LED_COLOR_BLUE);
+      case 2:
+        led1_color(LED_COLOR_GREEN);
+        led2_off();
       break;
-    case 3:
-      led2_color(LED_COLOR_CYAN);
+      case 3:
+        led2_color(LED_COLOR_GREEN);
+        led1_off();
       break;
-    case 4:
-      led2_color(LED_COLOR_YELLOW);
-      break;
-    case 5:
-      led2_color(LED_COLOR_MAGENTA);
-      break;
-    default:
-      led2_off();
+    }
+    
+  } else {
+  
+    switch (current_bank) {
+      case 0:
+        led1_color(LED_COLOR_RED);
+        break;
+      case 1:
+        led1_color(LED_COLOR_GREEN);
+        break;
+      case 2:
+        led1_color(LED_COLOR_BLUE);
+        break;
+      case 3:
+        led1_color(LED_COLOR_MAGENTA);
+        break;
+      case 4:
+        led1_color(LED_COLOR_CYAN);
+        break;
+      case 5:
+        led1_color(LED_COLOR_YELLOW);
+        break;
+      default:
+        led1_off();
+    }
+  
+    switch (current_preset) {
+      case 0:
+        led2_color(LED_COLOR_RED);
+        break;
+      case 1:
+        led2_color(LED_COLOR_GREEN);
+        break;
+      case 2:
+        led2_color(LED_COLOR_BLUE);
+        break;
+      case 3:
+        led2_color(LED_COLOR_CYAN);
+        break;
+      case 4:
+        led2_color(LED_COLOR_YELLOW);
+        break;
+      case 5:
+        led2_color(LED_COLOR_MAGENTA);
+        break;
+      default:
+        led2_off();
+        
+    }
   }
   
 }
