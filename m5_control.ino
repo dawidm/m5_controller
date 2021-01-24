@@ -1,7 +1,7 @@
 
 #include <EEPROM.h>
 
-#define DEBUG
+//#define DEBUG
 
 const byte BUTTON_1_PIN = 2;
 const byte BUTTON_2_PIN = 3;
@@ -395,7 +395,6 @@ void load_preset() {
   } else {
     if (two_preset_mode)
       m5_bypass(false);
-    byte m5_preset = current_bank * num_presets + current_preset;
     m5_preset_change();
     store_bank_preset(false);
   }
@@ -583,7 +582,8 @@ void m5_bypass(boolean bypass) {
 }
 
 void m5_preset_change() {
-  
+
+    byte m5_preset = current_bank * num_presets + current_preset;
     #ifndef DEBUG
     Serial.write(192); // midi program change
     Serial.write(m5_preset); // program number
