@@ -395,7 +395,8 @@ void load_preset() {
   } else {
     if (two_preset_mode)
       m5_bypass(false);
-    m5_preset_change();
+    byte m5_preset = current_bank * num_presets + current_preset;
+    m5_preset_change(m5_preset);
     store_bank_preset(false);
   }
 }
@@ -581,12 +582,11 @@ void m5_bypass(boolean bypass) {
   #endif
 }
 
-void m5_preset_change() {
+void m5_preset_change(byte preset) {
 
-    byte m5_preset = current_bank * num_presets + current_preset;
     #ifndef DEBUG
     Serial.write(192); // midi program change
-    Serial.write(m5_preset); // program number
+    Serial.write(preset); // program number
     #endif
     
 }
