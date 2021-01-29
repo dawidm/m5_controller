@@ -134,7 +134,6 @@ void setup() {
     D(Serial.print(num_banks);)
     D(Serial.print(" presets ");)
     D(Serial.println(num_presets);)
-    if (two_preset_mode)
 
     load_preset();
 
