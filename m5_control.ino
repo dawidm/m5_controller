@@ -9,12 +9,12 @@ const byte BUTTON_2_PIN = 3;
 const byte BUTTON_SAMPLING_MS = 10;
 const byte LONG_PRESS_NUM_SAMPLES = 50; // long press time = BUTTON_SAMPLING_MS * LONG_PRESS_NUM_SAMPLES
 
-const byte LED_1_PIN_R = 4; // red
-const byte LED_1_PIN_G = 5; // green
-const byte LED_1_PIN_B = 6; // blue
-const byte LED_2_PIN_R = 7; // red
-const byte LED_2_PIN_G = 8; // green
-const byte LED_2_PIN_B = 9; // blue
+const byte LED_1_PIN_R = 7; // red
+const byte LED_1_PIN_G = 8; // green
+const byte LED_1_PIN_B = 9; // blue
+const byte LED_2_PIN_R = 4; // red
+const byte LED_2_PIN_G = 5; // green
+const byte LED_2_PIN_B = 6; // blue
 
 const byte LED_COLOR_RED = 1;
 const byte LED_COLOR_GREEN = 2;
