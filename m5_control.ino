@@ -1,6 +1,8 @@
 
 #include <EEPROM.h>
 
+
+// when DEBUG defined, debug messages are send through serial port and midi messages are not sent (because they use the same port)
 //#define DEBUG
 
 // D() is for commands to run only if DEBUG defined, ND() only if DEBUG is not defined
