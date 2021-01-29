@@ -110,13 +110,13 @@ void setup() {
         num_presets = 4;
         D(Serial.println("two banks mode");)
       } else {
+        num_banks = check_n_banks(nbanks);
         byte npresets = EEPROM.read(EEPROM_N_PRESETS_ADDR);
         if (npresets == 0) {
           two_preset_mode = true;
           num_presets = 2;
           D(Serial.println("two preset mode");)
         } else {
-          num_banks = check_n_banks(nbanks);
           num_presets = check_n_presets(npresets);
           D(Serial.println("multiple bank-preset mode");)
         }
