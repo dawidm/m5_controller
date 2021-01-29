@@ -396,10 +396,10 @@ void load_preset() {
   if (current_preset == -1) {
     m5_bypass(true);
   } else {
-    if (two_preset_mode)
-      m5_bypass(false);
     byte m5_preset = current_bank * num_presets + current_preset;
     m5_preset_change(m5_preset);
+    if (two_preset_mode)
+      m5_bypass(false);
     store_bank_preset(false);
   }
 }
