@@ -3,6 +3,7 @@
 
 //#define DEBUG
 
+// D() is for commands to run only if DEBUG defined, ND() only if DEBUG is not defined
 #ifdef DEBUG
 #define D(x) x
 #define ND(x) do{}while(0);
@@ -39,14 +40,14 @@ const byte MIN_PRESETS = 2;
 const byte DEF_N_BANKS = 3;
 const byte DEF_N_PRESETS = 3;
 
-const byte EEPROM_SETTINGS_STORED = 0;
-const byte EEPROM_SETTINGS_STORED_VAL = 0;
-const byte EEPROM_N_BANKS_ADDR = 1;
-const byte EEPROM_N_PRESETS_ADDR = 2;
-const byte EEPROM_BANK_ADDR = 3;
-const byte EEPROM_PRESET_ADDR = 4;
+const byte EEPROM_SETTINGS_STORED_ADDR = 0; // address for information wheter number of banks and presets are stored
+const byte EEPROM_SETTINGS_STORED_VAL = 0; // value when they are stored
+const byte EEPROM_N_BANKS_ADDR = 1; // address for number of banks
+const byte EEPROM_N_PRESETS_ADDR = 2; // addres for number of presets
+const byte EEPROM_BANK_ADDR = 3; // addres for last active bank
+const byte EEPROM_PRESET_ADDR = 4; // address for last active preset
 
-long last_button1_read_millis = 0;
+long last_button1_read_millis = 0; // when was the button read last time
 int button1_pressed_samples = 0; // number of consecutive samples with button pressed
 boolean last_button1_long_pressed = false; // flag set after long press to avoid triggering short press on button release
 
@@ -60,25 +61,25 @@ byte num_presets = DEF_N_PRESETS;
 int current_preset = 0;
 int current_bank = 0;
 
-boolean setup_mode = false;
+boolean setup_mode = false; // settings mode is for setting the mode of operation and number of banks/presets
 boolean setup_mode_waiting_release = true; // set false after releasing button when started in setup mode
 byte setup_step = 0; // 0 - setting number of banks, 1 - setting number of presets
-byte setup_n_banks = 0;
-byte setup_n_presets = 0;
+byte setup_n_banks = 0; // for counting the number of banks in a setup mode
+byte setup_n_presets = 0; // for counting the number of presets in a setup mode
 
-boolean no_bank_mode = false;
+boolean two_bank_mode = false; // mode when there are 2 "banks", short press of buttons 1 and 2 if for choosing preset 1 and 2, long press for preset 3 and 4
 
-boolean two_preset_mode = false;
+boolean two_preset_mode = false; // mode when there are 2 presets for each bank activated by a short press; long presses are for switching banks
 boolean after_bank_switch = false; // the state after bank switch, waiting for choosing preset 1/2, two leds are on
 
 void setup() {
 
-#ifdef DEBUG
+  #ifdef DEBUG
   Serial.begin(9600);
   Serial.println("init");
-#else
+  #else
   Serial.begin(31250); // init for midi
-#endif
+  #endif
 
   pinMode(BUTTON_1_PIN, INPUT_PULLUP);
   pinMode(BUTTON_2_PIN, INPUT_PULLUP);
@@ -101,13 +102,13 @@ void setup() {
 
     D(Serial.println("normal mode");)
 
-    if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_SETTINGS_STORED_VAL) {
+    if (EEPROM.read(EEPROM_SETTINGS_STORED_ADDR) == EEPROM_SETTINGS_STORED_VAL) {
       byte nbanks = EEPROM.read(EEPROM_N_BANKS_ADDR);
       if (nbanks == 0) {
-        no_bank_mode = true;
+        two_bank_mode = true;
         num_banks = 0;
         num_presets = 4;
-        D(Serial.println("no banks mode");)
+        D(Serial.println("two banks mode");)
       } else {
         byte npresets = EEPROM.read(EEPROM_N_PRESETS_ADDR);
         if (npresets == 0) {
@@ -211,7 +212,7 @@ void short_b1_press() {
     if (setup_step == 1)
       setup_n_presets++;
 
-  } else if (no_bank_mode) {
+  } else if (two_bank_mode) {
 
     current_preset = 0;
     load_preset();
@@ -252,12 +253,12 @@ void long_b1_press() {
       return;
     setup_step++;
     if (setup_step == 1) {
-      if (setup_n_banks == 0) { // no banks mode
-        D(Serial.println("no banks mode");)
+      if (setup_n_banks == 0) { // two banks mode
+        D(Serial.println("two banks mode");)
         setup_mode = false;
-        no_bank_mode = true;
+        two_bank_mode = true;
         EEPROM.write(EEPROM_N_BANKS_ADDR, 0);
-        EEPROM.write(EEPROM_SETTINGS_STORED, EEPROM_SETTINGS_STORED_VAL);
+        EEPROM.write(EEPROM_SETTINGS_STORED_ADDR, EEPROM_SETTINGS_STORED_VAL);
         led1_off();
       } else {
         led1_off();
@@ -287,14 +288,14 @@ void long_b1_press() {
         EEPROM.write(EEPROM_N_PRESETS_ADDR, num_presets);
         led2_off();
       }
-      EEPROM.write(EEPROM_SETTINGS_STORED, EEPROM_SETTINGS_STORED_VAL);
+      EEPROM.write(EEPROM_SETTINGS_STORED_ADDR, EEPROM_SETTINGS_STORED_VAL);
       store_bank_preset(true);
       current_bank = 0;
       current_preset = 0;
       load_preset();
     }
 
-  } else if (no_bank_mode) {
+  } else if (two_bank_mode) {
 
     current_preset = 2;
     load_preset();
@@ -323,7 +324,7 @@ void short_b2_press() {
 
   if (setup_mode) {
 
-  } else if (no_bank_mode) {
+  } else if (two_bank_mode) {
 
     current_preset = 1;
     load_preset();
@@ -359,7 +360,7 @@ void short_b2_press() {
 void long_b2_press() {
   if (setup_mode) {
 
-  } else if (no_bank_mode) {
+  } else if (two_bank_mode) {
 
     current_preset = 3;
     load_preset();
@@ -406,7 +407,7 @@ void load_preset() {
 
 void update_preset_diodes() {
 
-  if (no_bank_mode) {
+  if (two_bank_mode) {
 
     switch (current_preset) {
       case 0:
@@ -463,6 +464,7 @@ void update_preset_diodes() {
 
 }
 
+// set bank color on led 1
 void led1_bank_color() {
   switch (current_bank) {
     case 0:
@@ -488,6 +490,7 @@ void led1_bank_color() {
   }
 }
 
+// set bank color on led 2
 void led2_bank_color() {
   switch (current_bank) {
     case 0:
@@ -513,6 +516,7 @@ void led2_bank_color() {
   }
 }
 
+// set preset color on led 1
 void led1_preset_color() {
   switch (current_preset) {
     case 0:
@@ -538,6 +542,7 @@ void led1_preset_color() {
   }
 }
 
+// set preset color on led 2
 void led2_preset_color() {
   switch (current_preset) {
     case 0:
@@ -563,6 +568,7 @@ void led2_preset_color() {
   }
 }
 
+// store current bank and preset in the eeprom
 void store_bank_preset(boolean initial_values) {
   if (initial_values) {
     EEPROM.write(EEPROM_BANK_ADDR, 0);
@@ -573,6 +579,7 @@ void store_bank_preset(boolean initial_values) {
   }
 }
 
+// send a midi command to enable/disable bypass (turn the offect on/off)
 void m5_bypass(boolean bypass) {
 
   D(Serial.print("bypass=");)
@@ -587,6 +594,7 @@ void m5_bypass(boolean bypass) {
 
 }
 
+// send a midi command to change preset (m5 supports 24 presets, values from 0 to 23)
 void m5_preset_change(byte preset) {
 
   D(Serial.print("m5preset=");)
@@ -648,10 +656,12 @@ void led_color(byte red_pin, byte green_pin, byte blue_pin, byte color) {
   }
 }
 
+// check whether the number of banks is in desired range and returns the closest value in the range
 byte check_n_banks(byte n_banks) {
   return max(min(n_banks, MAX_BANKS), MIN_BANKS);
 }
 
+// check whether the number of presets is in desired range and returns the closest value in the range
 byte check_n_presets(byte n_presets) {
   return max(min(n_presets, MAX_PRESETS), MIN_PRESETS);
 }
