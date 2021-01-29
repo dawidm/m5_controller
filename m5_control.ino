@@ -1,7 +1,7 @@
 
 #include <EEPROM.h>
 
-//#define DEBUG
+#define DEBUG
 
 const byte BUTTON_1_PIN = 2;
 const byte BUTTON_2_PIN = 3;
@@ -64,12 +64,12 @@ boolean after_bank_switch = false; // the state after bank switch, waiting for c
 
 void setup() {
 
-  #ifdef DEBUG
+#ifdef DEBUG
   Serial.begin(9600);
   Serial.println("init");
-  #else
+#else
   Serial.begin(31250); // init for midi
-  #endif
+#endif
 
   pinMode(BUTTON_1_PIN, INPUT_PULLUP);
   pinMode(BUTTON_2_PIN, INPUT_PULLUP);
@@ -83,17 +83,17 @@ void setup() {
   led2_off();
 
   if (digitalRead(BUTTON_1_PIN) == LOW) {
-    #ifdef DEBUG
+#ifdef DEBUG
     Serial.println("setup mode step 1");
-    #endif
+#endif
     setup_mode = true;
     led1_color(LED_COLOR_RED);
 
   } else {
 
-    #ifdef DEBUG
+#ifdef DEBUG
     Serial.println("normal mode");
-    #endif
+#endif
 
     if (EEPROM.read(EEPROM_SETTINGS_STORED) == EEPROM_SETTINGS_STORED_VAL) {
       byte nbanks = EEPROM.read(EEPROM_N_BANKS_ADDR);
@@ -120,12 +120,12 @@ void setup() {
     if (current_preset >= num_presets)
       current_preset = 0;
 
-    #ifdef DEBUG
+#ifdef DEBUG
     Serial.print("banks ");
     Serial.print(num_banks);
     Serial.print(" presets ");
     Serial.println(num_presets);
-    #endif
+#endif
 
     load_preset();
 
@@ -253,9 +253,9 @@ void long_b1_press() {
       } else {
         led1_off();
         led2_color(LED_COLOR_RED);
-        #ifdef DEBUG
+#ifdef DEBUG
         Serial.println("setup mode step 2");
-        #endif
+#endif
       }
     }
     if (setup_step == 2) {
@@ -264,21 +264,22 @@ void long_b1_press() {
       EEPROM.write(EEPROM_N_BANKS_ADDR, num_banks);
 
       if (setup_n_presets == 0) { // two preset mode
-        #ifdef DEBUG
+#ifdef DEBUG
         Serial.print("banks ");
         Serial.print(num_banks);
         Serial.println(" two presets mode ");
-        #endif
+#endif
+        num_presets = 2;
         two_preset_mode = true;
         EEPROM.write(EEPROM_N_PRESETS_ADDR, 0);
       } else { // mulit bank-preset mode
         num_presets = check_n_presets(setup_n_presets);
-        #ifdef DEBUG
+#ifdef DEBUG
         Serial.print("banks ");
         Serial.print(num_banks);
         Serial.print(" presets ");
         Serial.println(num_presets);
-        #endif
+#endif
         EEPROM.write(EEPROM_N_PRESETS_ADDR, num_presets);
         led2_off();
       }
@@ -381,12 +382,12 @@ void long_b2_press() {
 
 void load_preset() {
 
-  #ifdef DEBUG
+#ifdef DEBUG
   Serial.print("loading bank ");
   Serial.print(current_bank);
   Serial.print(" preset ");
   Serial.println(current_preset);
-  #endif
+#endif
 
   update_preset_diodes();
 
@@ -432,12 +433,12 @@ void update_preset_diodes() {
 
         led1_bank_color();
         led2_bank_color();
-        
+
       } else {
-        
+
         led1_off();
         led2_off();
-        
+
       }
 
     } else if (current_preset == 0) {
@@ -572,23 +573,33 @@ void store_bank_preset(boolean initial_values) {
 
 void m5_bypass(boolean bypass) {
 
-  #ifndef DEBUG
+#ifdef DEBUG
+  Serial.print("bypass=");
+  Serial.println(bypass);
+#endif
+
+#ifndef DEBUG
   Serial.write(176); // control change
   Serial.write(11); // command number
   if (bypass)
     Serial.write(0);
   else
     Serial.write(127);
-  #endif
+#endif
 }
 
 void m5_preset_change(byte preset) {
 
-    #ifndef DEBUG
-    Serial.write(192); // midi program change
-    Serial.write(preset); // program number
-    #endif
-    
+#ifdef DEBUG
+  Serial.print("m5preset=");
+  Serial.println(preset);
+#endif
+
+#ifndef DEBUG
+  Serial.write(192); // midi program change
+  Serial.write(preset); // program number
+#endif
+
 }
 
 void led1_off() {
