@@ -3,6 +3,8 @@
 Repository contains a schematic and code for a configurable Line 6 M5 preset switcher based on Arduino Nano.
 Switch has two buttons (B1, B2) and two LEDs with 6 colors and supports both simple (only 2 presets) and more sophisticated (like 6 channels x 6  presets).
 
+<img src="https://github.com/dawidm/m5_controller/blob/master/m5_controller.jpg?raw=true" alt="drawing" width="250"/>
+
 ## Configurations
 The controller could be simply configured in 3 modes.
 
